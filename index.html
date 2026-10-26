@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Binary Lab</title>
+<style>
+  :root {
+    --navy: #0B1D2E; --ink: #0F172A; --card: #EEF2F7; --line: #CBD5E1; --muted: #64748B;
+    --amber: #F59E0B; --amber-soft: #FEF3C7; --green: #22C55E; --green-dark: #15803D; --red: #DC2626; --white: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--white); color: var(--ink); font: 18px/1.4 -apple-system, "Segoe UI", Calibri, Arial, sans-serif; }
+  header { background: var(--navy); color: var(--white); padding: 18px 24px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  header h1 { margin: 0; font-size: 28px; }
+  header .kicker { color: var(--amber); font-weight: 700; font-size: 15px; }
+  header .bits { margin-left: auto; color: #1E3A52; font-family: "Courier New", monospace; font-size: 14px; }
+  main { max-width: 1000px; margin: 0 auto; padding: 20px 16px 40px; }
+  nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  nav button, .size button { border: 2px solid var(--line); background: var(--card); color: var(--ink); font: inherit; font-weight: 700;
+    padding: 10px 16px; border-radius: 10px; cursor: pointer; }
+  nav button[aria-pressed="true"], .size button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--white); }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
+  .size { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 16px; }
+  .size button { padding: 6px 12px; font-size: 16px; }
+  .task { background: var(--amber-soft); border-radius: 12px; padding: 14px 18px; margin: 14px 0; font-size: 22px; font-weight: 700; min-height: 64px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .task .big { font-size: 34px; color: #B45309; font-family: "Courier New", monospace; }
+  .board { display: grid; gap: 10px; margin: 18px 0; }
+  .bit { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .pv { font-weight: 800; font-size: 20px; color: var(--muted); }
+  .bulb { width: 100%; aspect-ratio: 1 / 1.15; max-width: 96px; border-radius: 50% 50% 40% 40%; border: 3px solid var(--line); background: #E2E8F0;
+    font: 800 30px "Courier New", monospace; color: var(--muted); cursor: pointer; transition: background .12s, box-shadow .12s; }
+  .bulb.on { background: var(--amber); border-color: #D97706; color: var(--white); box-shadow: 0 0 22px rgba(245, 158, 11, .7); }
+  .bulb:focus-visible { outline: 4px solid #1D4ED8; outline-offset: 3px; }
+  .bit.on .pv { color: #B45309; }
+  .readout { display: flex; gap: 14px; flex-wrap: wrap; }
+  .panel { flex: 1 1 260px; background: var(--card); border-radius: 12px; padding: 14px 18px; }
+  .panel .label { color: var(--muted); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .panel .value { font: 800 40px "Courier New", monospace; }
+  .sum { font-size: 18px; color: var(--muted); margin-top: 6px; min-height: 26px; word-break: break-word; }
+  .answer { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .answer input { font: 700 26px "Courier New", monospace; width: 140px; padding: 8px 10px; border: 3px solid var(--line); border-radius: 10px; }
+  .btn { background: var(--ink); color: var(--white); border: 0; font: inherit; font-weight: 700; padding: 12px 20px; border-radius: 10px; cursor: pointer; }
+  .btn.amber { background: var(--amber); color: var(--ink); }
+  .feedback { font-weight: 800; font-size: 20px; min-height: 30px; }
+  .feedback.good { color: var(--green-dark); }
+  .feedback.bad { color: var(--red); }
+  .score { display: flex; gap: 18px; font-weight: 700; color: var(--muted); }
+  .score b { color: var(--ink); font-size: 22px; }
+  .timer { font: 800 34px "Courier New", monospace; color: var(--ink); }
+  .timer.low { color: var(--red); }
+  .hidden { display: none !important; }
+  footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }
+  @media (max-width: 560px) { .bulb { font-size: 22px; } .pv { font-size: 15px; } .task { font-size: 18px; } .task .big { font-size: 26px; } }
+</style>
+</head>
+<body>
+<header>
+  <span class="kicker">CS 8 · Number Systems</span>
+  <h1>Binary Lab</h1>
+  <span class="bits" aria-hidden="true">01000010 01001001 01001110</span>
+</header>
+<main>
+  <nav aria-label="Mode">
+    <button data-mode="free" aria-pressed="true">1 · Free play</button>
+    <button data-mode="make" aria-pressed="false">2 · Make the number</button>
+    <button data-mode="read" aria-pressed="false">3 · Read the number</button>
+    <button data-mode="clock" aria-pressed="false">4 · Beat the clock</button>
+  </nav>
+
+  <div class="row">
+    <div class="size" aria-label="Number of bits">Bits:
+      <button data-bits="4" aria-pressed="true">4</button>
+      <button data-bits="8" aria-pressed="false">8</button>
+    </div>
+    <div class="score" id="scorebar"></div>
+  </div>
+
+  <div class="task" id="task"></div>
+
+  <div class="board" id="board"></div>
+
+  <div class="readout" id="readout">
+    <div class="panel"><div class="label">Binary</div><div class="value" id="bin">0000</div></div>
+    <div class="panel"><div class="label">Decimal</div><div class="value" id="dec">0</div>
+      <div class="sum" id="sum"></div></div>
+  </div>
+
+  <div class="answer hidden" id="answer">
+    <label for="guess"><b>Decimal:</b></label>
+    <input id="guess" inputmode="numeric" autocomplete="off" maxlength="3">
+    <button class="btn" id="check">Check</button>
+    <button class="btn amber" id="skip">New number</button>
+  </div>
+  <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
+  <button class="btn amber hidden" id="start">Start 60 seconds</button>
+
+  <footer>Mr. Angelo de Villa · Assumption College Sriracha · Click a bulb to switch it ON (1) or OFF (0).</footer>
+</main>
+
+<script>
+(function () {
+  var state = { mode: "free", bits: 4, value: 0, target: 0, streak: 0, best: 0, score: 0, timeLeft: 0, timer: null, running: false };
+  var $ = function (id) { return document.getElementById(id); };
+
+  function bestKey() { return "binlab-best-" + state.bits; }
+  function loadBest() { try { return parseInt(localStorage.getItem(bestKey()) || "0", 10) || 0; } catch (e) { return 0; } }
+  function saveBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) { /* storage blocked: fine */ } }
+
+  function max() { return Math.pow(2, state.bits) - 1; }
+  function toBin(n) { var s = n.toString(2); while (s.length < state.bits) s = "0" + s; return s; }
+  function randTarget(not) { var t; do { t = 1 + Math.floor(Math.random() * max()); } while (t === not && max() > 1); return t; }
+
+  function buildBoard() {
+    var board = $("board");
+    board.innerHTML = "";
+    board.style.gridTemplateColumns = "repeat(" + state.bits + ", 1fr)";
+    for (var i = state.bits - 1; i >= 0; i--) {
+      var pv = Math.pow(2, i);
+      var cell = document.createElement("div");
+      cell.className = "bit";
+      cell.innerHTML = '<div class="pv">' + pv + '</div>';
+      var b = document.createElement("button");
+      b.className = "bulb";
+      b.dataset.pv = pv;
+      b.setAttribute("aria-label", "Bit worth " + pv);
+      b.addEventListener("click", onBulb);
+      cell.appendChild(b);
+      board.appendChild(cell);
+    }
+  }
+
+  function setValue(v) {
+    state.value = v;
+    var bulbs = document.querySelectorAll(".bulb");
+    var parts = [];
+    for (var i = 0; i < bulbs.length; i++) {
+      var pv = parseInt(bulbs[i].dataset.pv, 10), on = (v & pv) !== 0;
+      bulbs[i].classList.toggle("on", on);
+      bulbs[i].parentNode.classList.toggle("on", on);
+      bulbs[i].textContent = on ? "1" : "0";
+      bulbs[i].setAttribute("aria-pressed", on ? "true" : "false");
+      if (on) parts.push(pv);
+    }
+    $("bin").textContent = toBin(v);
+    $("dec").textContent = (state.mode === "read" || state.mode === "make" || state.mode === "clock") && state.mode !== "free" && hideDecimal() ? "?" : String(v);
+    $("sum").textContent = hideDecimal() ? "" : (parts.length ? parts.join(" + ") + " = " + v : "All bulbs OFF = 0");
+  }
+  function hideDecimal() { return state.mode === "read" || state.mode === "make" || state.mode === "clock"; }
+
+  function onBulb(e) {
+    if (state.mode === "read") return;              // reading mode: bulbs are set by the computer
+    if (state.mode === "clock" && !state.running) return;
+    setValue(state.value ^ parseInt(e.currentTarget.dataset.pv, 10));
+    if (state.mode === "make" && state.value === state.target) {
+      state.streak++; if (state.streak > state.best) { state.best = state.streak; saveBest(state.best); }
+      feedback("Correct! " + toBin(state.target) + " = " + state.target, true);
+      renderScore();
+      setTimeout(nextMake, 900);
+    }
+    if (state.mode === "clock" && state.value === state.target) {
+      state.score++; renderScore();
+      state.target = randTarget(state.target); setValue(0); renderTask();
+    }
+  }
+
+  function feedback(msg, good) { var f = $("feedback"); f.textContent = msg; f.className = "feedback" + (msg ? (good ? " good" : " bad") : ""); }
+
+  function renderScore() {
+    var s = $("scorebar");
+    if (state.mode === "make") s.innerHTML = "<span>Streak <b>" + state.streak + "</b></span><span>Best <b>" + state.best + "</b></span>";
+    else if (state.mode === "read") s.innerHTML = "<span>Correct in a row <b>" + state.streak + "</b></span><span>Best <b>" + state.best + "</b></span>";
+    else if (state.mode === "clock") s.innerHTML = "<span class='timer" + (state.timeLeft <= 10 && state.running ? " low" : "") + "'>" + state.timeLeft + "s</span><span>Score <b>" + state.score + "</b></span><span>Best <b>" + state.best + "</b></span>";
+    else s.innerHTML = "";
+  }
+
+  function renderTask() {
+    var t = $("task");
+    if (state.mode === "free") t.innerHTML = "Free play: switch bulbs ON and OFF. What is the biggest number you can make with " + state.bits + " bits?";
+    if (state.mode === "make") t.innerHTML = "Make this number in binary: <span class='big'>" + state.target + "</span>";
+    if (state.mode === "read") t.innerHTML = "What is <span class='big'>" + toBin(state.target) + "</span> in decimal?";
+    if (state.mode === "clock") t.innerHTML = state.running ? "Make: <span class='big'>" + state.target + "</span>" : "Make as many numbers as you can in 60 seconds!";
+  }
+
+  function nextMake() { state.target = randTarget(state.target); setValue(0); feedback(""); renderTask(); }
+  function nextRead() { state.target = randTarget(state.target); setValue(state.target); $("guess").value = ""; feedback(""); renderTask(); $("guess").focus(); }
+
+  function checkRead() {
+    var g = parseInt($("guess").value, 10);
+    if (isNaN(g)) { feedback("Type a number first.", false); return; }
+    if (g === state.target) {
+      state.streak++; if (state.streak > state.best) { state.best = state.streak; saveBest(state.best); }
+      var parts = []; for (var p = Math.pow(2, state.bits - 1); p >= 1; p /= 2) if (state.target & p) parts.push(p);
+      feedback("Correct! " + parts.join(" + ") + " = " + state.target, true);
+      renderScore(); setTimeout(nextRead, 1100);
+    } else {
+      state.streak = 0; renderScore();
+      feedback("Not yet. Add up the place values above each 1.", false);
+    }
+  }
+
+  function startClock() {
+    state.running = true; state.score = 0; state.timeLeft = 60;
+    $("start").classList.add("hidden");
+    state.target = randTarget(0); setValue(0); renderTask(); renderScore(); feedback("");
+    state.timer = setInterval(function () {
+      state.timeLeft--; renderScore();
+      if (state.timeLeft <= 0) {
+        clearInterval(state.timer); state.running = false;
+        if (state.score > state.best) { state.best = state.score; saveBest(state.best); }
+        feedback("Time! You made " + state.score + " number" + (state.score === 1 ? "" : "s") + ".", true);
+        renderScore(); renderTask(); $("start").textContent = "Play again"; $("start").classList.remove("hidden");
+      }
+    }, 1000);
+  }
+
+  function setMode(mode) {
+    clearInterval(state.timer); state.running = false;
+    state.mode = mode; state.streak = 0; state.score = 0; state.timeLeft = 60;
+    state.best = mode === "clock" ? loadBest() : 0;
+    var btns = document.querySelectorAll("nav button");
+    for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-pressed", btns[i].dataset.mode === mode ? "true" : "false");
+    $("answer").classList.toggle("hidden", mode !== "read");
+    $("start").classList.toggle("hidden", mode !== "clock");
+    $("start").textContent = "Start 60 seconds";
+    feedback("");
+    if (mode === "free") { setValue(0); }
+    if (mode === "make") nextMake();
+    if (mode === "read") nextRead();
+    if (mode === "clock") { state.target = 0; setValue(0); }
+    renderTask(); renderScore();
+  }
+
+  function setBits(n) {
+    state.bits = n;
+    var b = document.querySelectorAll(".size button");
+    for (var i = 0; i < b.length; i++) b[i].setAttribute("aria-pressed", b[i].dataset.bits === String(n) ? "true" : "false");
+    $("guess").maxLength = n === 4 ? 2 : 3;
+    buildBoard(); setMode(state.mode);
+  }
+
+  var navs = document.querySelectorAll("nav button");
+  for (var i = 0; i < navs.length; i++) navs[i].addEventListener("click", function (e) { setMode(e.currentTarget.dataset.mode); });
+  var sizes = document.querySelectorAll(".size button");
+  for (var j = 0; j < sizes.length; j++) sizes[j].addEventListener("click", function (e) { setBits(parseInt(e.currentTarget.dataset.bits, 10)); });
+  $("check").addEventListener("click", checkRead);
+  $("skip").addEventListener("click", function () { state.streak = 0; renderScore(); nextRead(); });
+  $("guess").addEventListener("keydown", function (e) { if (e.key === "Enter") checkRead(); });
+  $("start").addEventListener("click", startClock);
+
+  setBits(4);
+})();
+</script>
+</body>
+</html>
