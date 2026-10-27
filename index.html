@@ -93,8 +93,9 @@
 
   <div class="board" id="board"></div>
 
-  <!-- the student's actions sit centred right under the bulbs, with the feedback just below them -->
+  <!-- centred under the bulbs: the feedback first (read the result), then the button (act on it) -->
   <div class="controls">
+    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
     <div class="answer hidden" id="answer">
       <label for="guess"><b>Decimal:</b></label>
       <input id="guess" inputmode="numeric" autocomplete="off" maxlength="3">
@@ -103,7 +104,6 @@
     </div>
     <button class="btn hidden" id="makeBtn">Submit</button>
     <button class="btn amber hidden" id="start">Start 60 seconds</button>
-    <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
   </div>
 
   <div class="readout" id="readout">
