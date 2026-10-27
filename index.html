@@ -57,6 +57,7 @@
   .timer.low { color: var(--red); }
   .hidden { display: none !important; }
   footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }
+  footer .credit { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line); font-size: 12px; color: #94A3B8; letter-spacing: .02em; }
   @media (max-width: 560px) { .bulb { font-size: 22px; } .pv { font-size: 15px; } .task { font-size: 18px; } .task .big { font-size: 26px; } }
 </style>
 </head>
@@ -105,7 +106,10 @@
   <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
   <button class="btn amber hidden" id="start">Start 60 seconds</button>
 
-  <footer>Mr. Angelo de Villa · Assumption College Sriracha · Click a bulb to switch it ON (1) or OFF (0).</footer>
+  <footer>
+    <div>Click a bulb to switch it ON (1) or OFF (0).</div>
+    <div class="credit">Designed by Mr. Angelo de Villa · Assumption College Sriracha</div>
+  </footer>
 </main>
 
 <script>
