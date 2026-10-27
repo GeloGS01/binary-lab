@@ -116,7 +116,7 @@
                 locked: false, revealed: false };
   var $ = function (id) { return document.getElementById(id); };
 
-  function bestKey() { return "binlab-best-" + state.bits; }
+  function bestKey() { return "binlab-best-" + state.mode + "-" + state.bits; }  // each mode and bit size keeps its own best
   function loadBest() { try { return parseInt(localStorage.getItem(bestKey()) || "0", 10) || 0; } catch (e) { return 0; } }
   function saveBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) { /* storage blocked: fine */ } }
 
@@ -251,7 +251,7 @@
   function setMode(mode) {
     clearInterval(state.timer); state.running = false;
     state.mode = mode; state.streak = 0; state.score = 0; state.timeLeft = 60;
-    state.best = mode === "clock" ? loadBest() : 0;
+    state.best = mode === "free" ? 0 : loadBest();
     var btns = document.querySelectorAll("nav button");
     for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-pressed", btns[i].dataset.mode === mode ? "true" : "false");
     $("answer").classList.toggle("hidden", mode !== "read");
