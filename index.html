@@ -29,6 +29,11 @@
   .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: space-between; }
   .size { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 16px; }
   .size button { padding: 6px 12px; font-size: 16px; }
+  .size .guide { margin-left: 10px; display: inline-flex; align-items: center; gap: 6px; }
+  .size .guide svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .size .guide .eye-off, .noguide .size .guide .eye-on { display: none; }
+  .noguide .size .guide .eye-off { display: inline; }
+  .noguide .pv { visibility: hidden; }  /* hide the 8-4-2-1 clue but keep the bulbs in place */
   .task { background: var(--amber-soft); border-radius: 12px; padding: 14px 18px; margin: 14px 0; font-size: 22px; font-weight: 700; min-height: 64px;
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .task .big { font-size: 34px; color: #B45309; font-family: "Courier New", monospace; }
@@ -85,6 +90,11 @@
     <div class="size" aria-label="Number of bits">Bits:
       <button data-bits="4" aria-pressed="true">4</button>
       <button data-bits="8" aria-pressed="false">8</button>
+      <button id="guideBtn" class="guide" aria-pressed="true" title="Hide the place values (8 4 2 1)">
+        <svg class="eye-on" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg class="eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.9 17.9A10.4 10.4 0 0 1 12 19C5 19 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 5.2A9.7 9.7 0 0 1 12 5c7 0 11 7 11 7a18.6 18.6 0 0 1-2.2 3.2M14.1 14.1a3 3 0 1 1-4.2-4.2"/><path d="M1 1l22 22"/></svg>
+        <span id="guideLabel">Guide on</span>
+      </button>
     </div>
     <div class="score" id="scorebar"></div>
   </div>
@@ -237,7 +247,7 @@
       renderScore(); setTimeout(nextRead, 1100);
     } else {
       state.streak = 0; renderScore();
-      feedback("Not yet. Add up the place values above each 1.", false);
+      feedback("Not yet. Add up the place values of each 1.", false);
     }
   }
 
@@ -277,7 +287,7 @@
 
   function setBits(n) {
     state.bits = n;
-    var b = document.querySelectorAll(".size button");
+    var b = document.querySelectorAll(".size button[data-bits]");
     for (var i = 0; i < b.length; i++) b[i].setAttribute("aria-pressed", b[i].dataset.bits === String(n) ? "true" : "false");
     $("guess").maxLength = n === 4 ? 2 : 3;
     buildBoard(); setMode(state.mode);
@@ -285,10 +295,24 @@
 
   var navs = document.querySelectorAll("nav button");
   for (var i = 0; i < navs.length; i++) navs[i].addEventListener("click", function (e) { setMode(e.currentTarget.dataset.mode); });
-  var sizes = document.querySelectorAll(".size button");
+  var sizes = document.querySelectorAll(".size button[data-bits]");
   for (var j = 0; j < sizes.length; j++) sizes[j].addEventListener("click", function (e) { setBits(parseInt(e.currentTarget.dataset.bits, 10)); });
   $("check").addEventListener("click", checkRead);
   $("makeBtn").addEventListener("click", submitMake);
+
+  // Guide on/off: shows or hides the place values above the bulbs (remembered in this browser)
+  function setGuide(on) {
+    document.body.classList.toggle("noguide", !on);
+    var b = $("guideBtn");
+    b.setAttribute("aria-pressed", on ? "true" : "false");
+    b.title = on ? "Hide the place values (8 4 2 1)" : "Show the place values (8 4 2 1)";
+    $("guideLabel").textContent = on ? "Guide on" : "Guide off";
+    try { localStorage.setItem("binlab-guide", on ? "on" : "off"); } catch (e) { /* storage blocked: fine */ }
+  }
+  $("guideBtn").addEventListener("click", function () { setGuide(document.body.classList.contains("noguide")); });
+  var savedGuide = "on";
+  try { savedGuide = localStorage.getItem("binlab-guide") || "on"; } catch (e) { /* default on */ }
+  setGuide(savedGuide !== "off");
   $("skip").addEventListener("click", function () { state.streak = 0; renderScore(); nextRead(); });
   $("guess").addEventListener("keydown", function (e) { if (e.key === "Enter") checkRead(); });
   $("start").addEventListener("click", startClock);
