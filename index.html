@@ -102,6 +102,7 @@
     <button class="btn" id="check">Check</button>
     <button class="btn amber" id="skip">New number</button>
   </div>
+  <button class="btn hidden" id="makeBtn">Submit</button>
   <div class="feedback" id="feedback" role="status" aria-live="polite"></div>
   <button class="btn amber hidden" id="start">Start 60 seconds</button>
 
@@ -110,7 +111,9 @@
 
 <script>
 (function () {
-  var state = { mode: "free", bits: 4, value: 0, target: 0, streak: 0, best: 0, score: 0, timeLeft: 0, timer: null, running: false };
+  // locked: "make" answer was right, bulbs frozen until Next. revealed: show the decimal after a Submit.
+  var state = { mode: "free", bits: 4, value: 0, target: 0, streak: 0, best: 0, score: 0, timeLeft: 0, timer: null, running: false,
+                locked: false, revealed: false };
   var $ = function (id) { return document.getElementById(id); };
 
   function bestKey() { return "binlab-best-" + state.bits; }
@@ -153,21 +156,24 @@
       if (on) parts.push(pv);
     }
     $("bin").textContent = toBin(v);
-    $("dec").textContent = (state.mode === "read" || state.mode === "make" || state.mode === "clock") && state.mode !== "free" && hideDecimal() ? "?" : String(v);
+    $("dec").textContent = hideDecimal() ? "?" : String(v);
     $("sum").textContent = hideDecimal() ? "" : (parts.length ? parts.join(" + ") + " = " + v : "All bulbs OFF = 0");
   }
-  function hideDecimal() { return state.mode === "read" || state.mode === "make" || state.mode === "clock"; }
+  function hideDecimal() {
+    if (state.mode === "make") return !state.revealed;
+    return state.mode === "read" || state.mode === "clock";
+  }
+  function breakdown(v) {
+    var parts = []; for (var p = Math.pow(2, state.bits - 1); p >= 1; p /= 2) if (v & p) parts.push(p);
+    return parts.length ? parts.join(" + ") : "0";
+  }
 
   function onBulb(e) {
     if (state.mode === "read") return;              // reading mode: bulbs are set by the computer
     if (state.mode === "clock" && !state.running) return;
+    if (state.mode === "make" && state.locked) return;  // answer is right: wait for Next
+    if (state.mode === "make") { state.revealed = false; feedback(""); }
     setValue(state.value ^ parseInt(e.currentTarget.dataset.pv, 10));
-    if (state.mode === "make" && state.value === state.target) {
-      state.streak++; if (state.streak > state.best) { state.best = state.streak; saveBest(state.best); }
-      feedback("Correct! " + toBin(state.target) + " = " + state.target, true);
-      renderScore();
-      setTimeout(nextMake, 900);
-    }
     if (state.mode === "clock" && state.value === state.target) {
       state.score++; renderScore();
       state.target = randTarget(state.target); setValue(0); renderTask();
@@ -192,7 +198,25 @@
     if (state.mode === "clock") t.innerHTML = state.running ? "Make: <span class='big'>" + state.target + "</span>" : "Make as many numbers as you can in 60 seconds!";
   }
 
-  function nextMake() { state.target = randTarget(state.target); setValue(0); feedback(""); renderTask(); }
+  function nextMake() {
+    state.locked = false; state.revealed = false; $("makeBtn").textContent = "Submit";
+    state.target = randTarget(state.target); setValue(0); feedback(""); renderTask();
+  }
+
+  function submitMake() {
+    if (state.locked) { nextMake(); return; }
+    state.revealed = true;
+    if (state.value === state.target) {
+      state.locked = true; state.streak++;
+      if (state.streak > state.best) { state.best = state.streak; saveBest(state.best); }
+      feedback("Correct! " + toBin(state.target) + " = " + breakdown(state.target) + " = " + state.target, true);
+      $("makeBtn").textContent = "Next →";
+    } else {
+      state.streak = 0;
+      feedback("Not yet. Your bulbs make " + breakdown(state.value) + " = " + state.value + ". The target is " + state.target + ".", false);
+    }
+    setValue(state.value); renderScore();
+  }
   function nextRead() { state.target = randTarget(state.target); setValue(state.target); $("guess").value = ""; feedback(""); renderTask(); $("guess").focus(); }
 
   function checkRead() {
@@ -231,6 +255,8 @@
     var btns = document.querySelectorAll("nav button");
     for (var i = 0; i < btns.length; i++) btns[i].setAttribute("aria-pressed", btns[i].dataset.mode === mode ? "true" : "false");
     $("answer").classList.toggle("hidden", mode !== "read");
+    $("makeBtn").classList.toggle("hidden", mode !== "make");
+    state.locked = false; state.revealed = false;
     $("start").classList.toggle("hidden", mode !== "clock");
     $("start").textContent = "Start 60 seconds";
     feedback("");
@@ -254,6 +280,7 @@
   var sizes = document.querySelectorAll(".size button");
   for (var j = 0; j < sizes.length; j++) sizes[j].addEventListener("click", function (e) { setBits(parseInt(e.currentTarget.dataset.bits, 10)); });
   $("check").addEventListener("click", checkRead);
+  $("makeBtn").addEventListener("click", submitMake);
   $("skip").addEventListener("click", function () { state.streak = 0; renderScore(); nextRead(); });
   $("guess").addEventListener("keydown", function (e) { if (e.key === "Enter") checkRead(); });
   $("start").addEventListener("click", startClock);
