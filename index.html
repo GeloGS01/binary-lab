@@ -11,6 +11,11 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--white); color: var(--ink); font: 18px/1.4 -apple-system, "Segoe UI", Calibri, Arial, sans-serif; }
+  .school { background: var(--white); border-bottom: 1px solid var(--line); padding: 10px 24px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+  .school img { height: 64px; width: auto; display: block; }
+  .school .acs { max-width: 70%; object-fit: contain; }
+  @media (max-width: 560px) { .school { padding: 8px 12px; } .school img { height: 40px; } }
   header { background: var(--navy); color: var(--white); padding: 18px 24px; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
   header h1 { margin: 0; font-size: 28px; }
   header .kicker { color: var(--amber); font-weight: 700; font-size: 15px; }
@@ -56,6 +61,10 @@
 </style>
 </head>
 <body>
+<div class="school">
+  <img class="acs" src="assets/acs-header.png" alt="Assumption College Sriracha">
+  <img src="assets/mlp-logo.png" alt="Modern Language Program">
+</div>
 <header>
   <span class="kicker">CS 8 · Number Systems</span>
   <h1>Binary Lab</h1>
