@@ -64,6 +64,18 @@
   .score b { color: var(--ink); font-size: 22px; }
   .timer { font: 800 34px "Courier New", monospace; color: var(--ink); }
   .timer.low { color: var(--red); }
+  .post { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+  .post input, .post select { font: inherit; font-weight: 700; padding: 10px 12px; border: 3px solid var(--line); border-radius: 10px; background: var(--white); }
+  .post input { width: 170px; }
+  .top { background: var(--card); border-radius: 12px; padding: 14px 18px; margin-top: 14px; }
+  .top .label { color: var(--muted); font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .top ol { margin: 8px 0 0; padding-left: 34px; }
+  .top li { padding: 3px 0; font-weight: 700; }
+  .top li .cls { color: var(--muted); font-weight: 600; font-size: 15px; margin-left: 6px; }
+  .top li .pts { float: right; font-family: "Courier New", monospace; font-size: 20px; }
+  .top li.me { color: #B45309; }
+  .top .msg { color: var(--muted); font-size: 16px; margin-top: 6px; }
+  .top .msg:empty { display: none; }
   .hidden { display: none !important; }
   footer { color: var(--muted); font-size: 14px; text-align: center; margin-top: 24px; }  @media (max-width: 560px) { .bulb { font-size: 22px; } .pv { font-size: 15px; } .task { font-size: 18px; } .task .big { font-size: 26px; } }
 </style>
@@ -113,6 +125,12 @@
     </div>
     <button class="btn hidden" id="makeBtn">Submit</button>
     <button class="btn amber hidden" id="start">Start 60 seconds</button>
+    <!-- shown after a Beat the clock round when the global Top 10 is switched on -->
+    <form class="post hidden" id="postForm">
+      <input id="nick" maxlength="12" autocomplete="off" placeholder="Nickname" aria-label="Nickname">
+      <select id="cls" aria-label="Class"><option value="">Class</option></select>
+      <button class="btn" type="submit" id="postBtn">Post to Top 10</button>
+    </form>
   </div>
 
   <div class="readout" id="readout">
@@ -120,6 +138,12 @@
     <div class="panel"><div class="label">Decimal</div><div class="value" id="dec">0</div>
       <div class="sum" id="sum"></div></div>
   </div>
+
+  <section class="top hidden" id="top" aria-live="polite">
+    <div class="label">Global Top 10 · <span id="topBoard"></span></div>
+    <ol id="topList"></ol>
+    <div class="msg" id="topMsg"></div>
+  </section>
 
   <footer>Click a bulb to switch it ON (1) or OFF (0).</footer>
 </main>
@@ -131,7 +155,14 @@
                 locked: false, revealed: false };
   var $ = function (id) { return document.getElementById(id); };
 
-  function bestKey() { return "binlab-best-" + state.mode + "-" + state.bits; }  // each mode and bit size keeps its own best
+  // Global Top 10 for Beat the clock: Google Apps Script web app (see apps-script/Code.gs).
+  // Leave SCORE_URL empty to switch the global board off.
+  var SCORE_URL = "https://script.google.com/macros/s/AKfycbwGfGhDRjyTZJ2Y2Rjv7kMhflGVrs6RNkuuBfHDxO11dbH-tpLHXlbH0Rnx060KyFDJ/exec";
+  var CLASSES = ["8A", "8B"];  // keep in step with CLASSES in Code.gs
+
+  function guideOn() { return !document.body.classList.contains("noguide"); }
+  function bestKey() { return "binlab-best-" + state.mode + "-" + state.bits + (guideOn() ? "" : "-noguide"); }  // each mode, bit size and guide on/off keeps its own best
+  function bestLabel() { return guideOn() ? "Best" : "Best (no guide)"; }
   function loadBest() { try { return parseInt(localStorage.getItem(bestKey()) || "0", 10) || 0; } catch (e) { return 0; } }
   function saveBest(v) { try { localStorage.setItem(bestKey(), String(v)); } catch (e) { /* storage blocked: fine */ } }
 
@@ -199,9 +230,9 @@
 
   function renderScore() {
     var s = $("scorebar");
-    if (state.mode === "make") s.innerHTML = "<span>Streak <b>" + state.streak + "</b></span><span>Best <b>" + state.best + "</b></span>";
-    else if (state.mode === "read") s.innerHTML = "<span>Correct in a row <b>" + state.streak + "</b></span><span>Best <b>" + state.best + "</b></span>";
-    else if (state.mode === "clock") s.innerHTML = "<span class='timer" + (state.timeLeft <= 10 && state.running ? " low" : "") + "'>" + state.timeLeft + "s</span><span>Score <b>" + state.score + "</b></span><span>Best <b>" + state.best + "</b></span>";
+    if (state.mode === "make") s.innerHTML = "<span>Streak <b>" + state.streak + "</b></span><span>" + bestLabel() + " <b>" + state.best + "</b></span>";
+    else if (state.mode === "read") s.innerHTML = "<span>Correct in a row <b>" + state.streak + "</b></span><span>" + bestLabel() + " <b>" + state.best + "</b></span>";
+    else if (state.mode === "clock") s.innerHTML = "<span class='timer" + (state.timeLeft <= 10 && state.running ? " low" : "") + "'>" + state.timeLeft + "s</span><span>Score <b>" + state.score + "</b></span><span>" + bestLabel() + " <b>" + state.best + "</b></span>";
     else s.innerHTML = "";
   }
 
@@ -252,7 +283,7 @@
 
   function startClock() {
     state.running = true; state.score = 0; state.timeLeft = 60;
-    $("start").classList.add("hidden");
+    $("start").classList.add("hidden"); $("postForm").classList.add("hidden");
     state.target = randTarget(0); setValue(0); renderTask(); renderScore(); feedback("");
     state.timer = setInterval(function () {
       state.timeLeft--; renderScore();
@@ -261,6 +292,11 @@
         if (state.score > state.best) { state.best = state.score; saveBest(state.best); }
         feedback("Time! You made " + state.score + " number" + (state.score === 1 ? "" : "s") + ".", true);
         renderScore(); renderTask(); $("start").textContent = "Play again"; $("start").classList.remove("hidden");
+        if (SCORE_URL && state.score > 0) {  // offer this round (once) to the global board
+          state.postBoard = boardId(); state.postScore = state.score;
+          $("postBtn").disabled = false; $("postForm").classList.remove("hidden");
+        }
+        loadTop();
       }
     }, 1000);
   }
@@ -281,8 +317,60 @@
     if (mode === "make") nextMake();
     if (mode === "read") nextRead();
     if (mode === "clock") { state.target = 0; setValue(0); }
-    renderTask(); renderScore();
+    $("postForm").classList.add("hidden");
+    renderTask(); renderScore(); loadTop();
   }
+
+  // ---- Global Top 10 (Beat the clock only) ----
+  function boardId() { return state.bits + "-" + (guideOn() ? "guide" : "noguide"); }  // matches BOARDS in Code.gs
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k) || ""; localStorage.setItem(k, v); } catch (e) { return ""; } }
+  var topReq = 0;  // only the newest request may draw the list (bits/guide can change while one is loading)
+  function topMsg(m) { $("topMsg").textContent = m; }
+  function renderTop(list) {
+    var ol = $("topList"), me = store("binlab-nick").toLowerCase() + "|" + store("binlab-cls");
+    ol.innerHTML = "";
+    for (var i = 0; i < list.length; i++) {
+      var li = document.createElement("li"), n = document.createElement("span"), c = document.createElement("span"), p = document.createElement("span");
+      n.textContent = list[i].name; c.className = "cls"; c.textContent = list[i].cls; p.className = "pts"; p.textContent = list[i].score;
+      li.appendChild(n); li.appendChild(c); li.appendChild(p);
+      if ((list[i].name.toLowerCase() + "|" + list[i].cls) === me) li.className = "me";
+      ol.appendChild(li);
+    }
+    topMsg(list.length ? "" : "No scores yet. Be the first!");
+  }
+  function loadTop() {
+    var box = $("top");
+    if (!SCORE_URL || state.mode !== "clock") { box.classList.add("hidden"); topReq++; return; }
+    box.classList.remove("hidden");
+    $("topBoard").textContent = state.bits + "-bit, " + (guideOn() ? "guide on" : "no guide");
+    var id = ++topReq;
+    $("topList").innerHTML = ""; topMsg("Loading…");
+    fetch(SCORE_URL + "?board=" + encodeURIComponent(boardId()))
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (id !== topReq) return; if (!d.ok) throw new Error(d.error); renderTop(d.top); })
+      .catch(function () { if (id === topReq) topMsg("Can't load the Top 10 right now."); });
+  }
+  function postScore(e) {
+    e.preventDefault();
+    var name = $("nick").value.trim(), cls = $("cls").value;
+    if (!name) { feedback("Type a nickname first.", false); $("nick").focus(); return; }
+    if (!cls) { feedback("Pick your class first.", false); $("cls").focus(); return; }
+    store("binlab-nick", name); store("binlab-cls", cls);
+    $("postBtn").disabled = true; feedback("Posting…", true);
+    var board = state.postBoard;
+    // text/plain body (fetch default) keeps this a "simple" request, so Apps Script needs no CORS preflight
+    fetch(SCORE_URL, { method: "POST", body: JSON.stringify({ board: board, name: name, cls: cls, score: state.postScore }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d.ok) throw { say: d.error };  // only server messages are shown to students
+        $("postForm").classList.add("hidden"); feedback("Posted to the Top 10 board!", true);
+        if (board === boardId() && state.mode === "clock") { topReq++; renderTop(d.top); }
+      })
+      .catch(function (err) { $("postBtn").disabled = false; feedback((err && err.say) || "Couldn't post. Try again.", false); });
+  }
+  for (var c = 0; c < CLASSES.length; c++) { var o = document.createElement("option"); o.textContent = CLASSES[c]; $("cls").appendChild(o); }
+  $("nick").value = store("binlab-nick"); $("cls").value = store("binlab-cls");
+  $("postForm").addEventListener("submit", postScore);
 
   function setBits(n) {
     state.bits = n;
@@ -307,7 +395,8 @@
     b.title = on ? "Hide the place values (8 4 2 1)" : "Show the place values (8 4 2 1)";
     try { localStorage.setItem("binlab-guide", on ? "on" : "off"); } catch (e) { /* storage blocked: fine */ }
   }
-  $("guideBtn").addEventListener("click", function () { setGuide(document.body.classList.contains("noguide")); });
+  // switching the guide restarts the round so a streak made with the guide can't count as a no-guide best
+  $("guideBtn").addEventListener("click", function () { setGuide(!guideOn()); setMode(state.mode); });
   var savedGuide = "on";
   try { savedGuide = localStorage.getItem("binlab-guide") || "on"; } catch (e) { /* default on */ }
   setGuide(savedGuide !== "off");
