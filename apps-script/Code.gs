@@ -10,6 +10,7 @@
  */
 var BOARDS = ["4-guide", "4-noguide", "8-guide", "8-noguide",   // Binary Lab: bits + place-value guide on/off
               "ict7-showdown"];                                  // ICT 7 Logic Showdown (logic-escape/showdown)
+var CLASSES = ["8A", "8B", "7A", "7B", "7C"];                                      // keep in step with CLASSES in index.html
 var MAX_SCORE = 200;                                             // anything higher in 60 s is not believable
 var TOP_N = 10;
 var SHEET_NAME = "Scores";
@@ -42,7 +43,7 @@ function top_(board) {
   });
   return Object.keys(best).map(function (k) { return best[k]; })
     .sort(function (a, b) { return b.score - a.score || a.t - b.t; })
-    .slice(0, TOP_N)
+    .slice(0, board === "ict7-showdown" ? 500 : TOP_N)   // Logic Showdown lists every player
     .map(function (e) { return { name: e.name, cls: e.cls, score: e.score }; });
 }
 
@@ -56,15 +57,14 @@ function doPost(e) {
   var d;
   try { d = JSON.parse(e.postData.contents); } catch (err) { return json_({ ok: false, error: "Bad request" }); }
   var board = String(d.board || "");
-  // class is typed by the student: "8 a" -> "8A", "m.3/1" -> "M.3/1"; same clean-up as cleanClass() in index.html
-  var cls = String(d.cls || "").toUpperCase().replace(/[^A-Z0-9\/.\-]/g, "").replace(/^[^A-Z0-9]+/, "").slice(0, 6);
+  var cls = String(d.cls || "");
   var score = Math.floor(Number(d.score));
   // letters (incl. Thai), digits, space, _ . - only; must start with a letter/digit (also blocks =formulas)
   var name = String(d.name || "").replace(/[^A-Za-z0-9฀-๿ _.\-]/g, "")
     .replace(/^[^A-Za-z0-9฀-๿]+/, "").trim().slice(0, 12);
 
   if (BOARDS.indexOf(board) < 0) return json_({ ok: false, error: "Unknown board" });
-  if (!cls) return json_({ ok: false, error: "Type your class" });
+  if (CLASSES.indexOf(cls) < 0) return json_({ ok: false, error: "Pick your class" });
   if (!name) return json_({ ok: false, error: "Type a nickname" });
   if (!(score >= 1 && score <= MAX_SCORE)) return json_({ ok: false, error: "Score not accepted" });
 
